@@ -13,6 +13,7 @@
     <properties>
         <java.version>17</java.version>
         <spring.boot.version>3.3.5</spring.boot.version>
+        <start-class>com.example.redisguard.RedisGuardApplication</start-class>
     </properties>
 
     <dependencyManagement>
@@ -82,6 +83,16 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring.boot.version}</version>
+                <configuration>
+                    <mainClass>${start-class}</mainClass>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
