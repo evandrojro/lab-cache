@@ -35,10 +35,12 @@ public class RedisGuardController {
     }
 
     @GetMapping(path = "/rl/check", produces = MediaType.APPLICATION_JSON_VALUE)
-    public RateLimitResponse check(@RequestParam String userId,
-                                   @RequestParam String route,
-                                   @RequestParam(defaultValue = "10") int limit,
-                                   @RequestParam(defaultValue = "10") int windowSeconds) {
+    public RateLimitResponse check(
+            @RequestParam("userId") String userId,
+            @RequestParam("route") String route,
+            @RequestParam(name = "limit", defaultValue = "10") int limit,
+            @RequestParam(name = "windowSeconds", defaultValue = "10") int windowSeconds
+    ) {
         return rateLimitService.check(userId, route, limit, windowSeconds);
     }
 }

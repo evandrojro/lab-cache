@@ -12,7 +12,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -91,6 +91,7 @@ class RedisGuardApplicationTests {
         for (int i = 0; i < 50; i++) {
             tasks.add(() -> sendIdem(key, request));
         }
+
         List<Future<ResponseEntity<IdempotencyResponse>>> futures = executor.invokeAll(tasks);
         executor.shutdown();
         executor.awaitTermination(30, TimeUnit.SECONDS);
@@ -105,8 +106,10 @@ class RedisGuardApplicationTests {
                 })
                 .collect(Collectors.toList());
 
-        long successCount = responses.stream().filter(r -> r.getStatusCode().is2xxSuccessful()).count();
-        long conflictCount = responses.stream().filter(r -> r.getStatusCode() == HttpStatus.CONFLICT).count();
+        long successCount = responses.stream()
+                .filter(r -> r.getStatusCode().is2xxSuccessful())
+                .count();
+
         long processedTrue = responses.stream()
                 .filter(r -> r.getStatusCode().is2xxSuccessful())
                 .map(ResponseEntity::getBody)
@@ -116,11 +119,11 @@ class RedisGuardApplicationTests {
 
         Assertions.assertEquals(1, processedTrue);
         Assertions.assertTrue(successCount >= 1);
-        Assertions.assertTrue(conflictCount >= 0);
 
         long doneAudits = auditRepository.findAll().stream()
                 .filter(a -> a.getStatus() == IdempotencyStatus.DONE)
                 .count();
+
         Assertions.assertEquals(1, doneAudits);
     }
 
@@ -132,14 +135,21 @@ class RedisGuardApplicationTests {
         int window = 5;
 
         RateLimitResponse lastResponse = null;
-        HttpStatus lastStatus = null;
+        int lastStatus = 0;
+
         for (int i = 0; i < 5; i++) {
-            ResponseEntity<RateLimitResponse> response = restTemplate.getForEntity(url("/rl/check?userId=" + user + "&route=" + route + "&limit=" + limit + "&windowSeconds=" + window), RateLimitResponse.class);
+            ResponseEntity<RateLimitResponse> response =
+                    restTemplate.getForEntity(
+                            url("/rl/check?userId=" + user + "&route=" + route +
+                                    "&limit=" + limit + "&windowSeconds=" + window),
+                            RateLimitResponse.class
+                    );
+
             lastResponse = response.getBody();
-            lastStatus = response.getStatusCode();
+            lastStatus = response.getStatusCode().value();
         }
 
-        Assertions.assertEquals(HttpStatus.TOO_MANY_REQUESTS, lastStatus);
+        Assertions.assertEquals(HttpStatus.TOO_MANY_REQUESTS.value(), lastStatus);
         Assertions.assertNotNull(lastResponse);
         Assertions.assertFalse(lastResponse.isAllowed());
         Assertions.assertTrue(violationRepository.count() >= 1);
