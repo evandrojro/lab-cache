@@ -12,6 +12,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -121,18 +122,27 @@ public class IdempotencyService {
                 Map<String, String> payload = objectMapper.readValue(decoded, Map.class);
                 String result = payload.getOrDefault("result", "");
                 return new IdempotencyResponse(idemKey, processed, result, System.currentTimeMillis() - start);
-            } catch (IllegalArgumentException | JsonProcessingException e) {
-                throw new ProcessingException("Corrupted idempotency payload");
-            }
+             } catch (IllegalArgumentException | IOException e) {
+            throw new ProcessingException("Corrupted idempotency payload");
         }
+
+    }
         throw new ProcessingException("Unknown idempotency state");
     }
 
-    private void cacheResult(String cacheKey, String result) throws JsonProcessingException {
-        Map<String, String> payload = Map.of("result", result);
-        String json = objectMapper.writeValueAsString(payload);
-        String encoded = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
-        redisTemplate.opsForValue().set(cacheKey, "DONE:" + encoded, DONE_TTL);
+    private void cacheResult(String cacheKey, String result) {
+        try {
+            Map<String, String> payload = Map.of("result", result);
+            String json = objectMapper.writeValueAsString(payload);
+            String encoded = Base64.getEncoder()
+                    .encodeToString(json.getBytes(StandardCharsets.UTF_8));
+
+            redisTemplate.opsForValue()
+                    .set(cacheKey, "DONE:" + encoded, DONE_TTL);
+
+        } catch (JsonProcessingException e) {
+            throw new ProcessingException("Failed to serialize idempotency result: " + e.getMessage());
+        }
     }
 
     private String simulateWork(IdempotencyRequest request) throws InterruptedException {
