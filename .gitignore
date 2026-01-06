@@ -1,6 +1,14 @@
-/target/
+# Maven / Java
+target/
+*.log
+
+# IDEs
 .idea/
 .vscode/
-*.log
+*.iml
+
+# Maven Wrapper
 .mvn/wrapper/maven-wrapper.jar
+
+# SO
 .DS_Store
